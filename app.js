@@ -1,6 +1,9 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-let config = {};
+let config = {
+    sliders: { emotion: 50, affection: 75, energy: 40 },
+    weights: { emotion: 33, affection: 33, energy: 34 }
+};
 let chatHistory = [];
 
 // Get API key from localStorage
