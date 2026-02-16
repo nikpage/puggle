@@ -27,6 +27,7 @@ async function loadConfig() {
 
     try {
         const response = await fetch('config.txt');
+        if (!response.ok) throw new Error('Failed to load config.txt');
         const text = await response.text();
         parseConfig(text);
         localStorage.setItem('pet_config', JSON.stringify(config));
@@ -63,10 +64,12 @@ function parseConfig(text) {
 
         const [key, value] = line.split('=');
         if (key && value !== undefined) {
+            const num = parseInt(value, 10);
+            if (isNaN(num)) continue;
             if (currentSection === 'sliders') {
-                config.sliders[key.trim()] = parseInt(value);
+                config.sliders[key.trim()] = num;
             } else if (currentSection === 'weights') {
-                config.weights[key.trim()] = parseInt(value);
+                config.weights[key.trim()] = num;
             }
         }
     }
@@ -185,11 +188,19 @@ function escapeHtml(text) {
 }
 
 // Handle sending message
+let isSending = false;
 async function sendMessage() {
+    if (isSending) return;
+
     const input = document.getElementById('userInput');
     const message = input.value.trim();
 
     if (!message) return;
+
+    isSending = true;
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    input.disabled = true;
 
     addMessage(message, true);
     input.value = '';
@@ -200,12 +211,19 @@ async function sendMessage() {
     typingDiv.innerHTML = '<p>...</p>';
     document.getElementById('chatWindow').appendChild(typingDiv);
 
-    const response = await getPetResponse(message);
-
-    // Remove typing indicator
-    typingDiv.remove();
-
-    addMessage(response, false);
+    try {
+        const response = await getPetResponse(message);
+        typingDiv.remove();
+        addMessage(response, false);
+    } catch (error) {
+        typingDiv.remove();
+        addMessage("Oops! Something went wrong.", false);
+    } finally {
+        isSending = false;
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+    }
 }
 
 // Request notification permission
@@ -217,6 +235,8 @@ async function requestNotificationPermission() {
 
 // Pet seeks attention
 function petSeeksAttention() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
     const affection = config.sliders.affection || 0;
     const energy = config.sliders.energy || 0;
 
@@ -233,13 +253,10 @@ function petSeeksAttention() {
         ];
 
         const message = messages[Math.floor(Math.random() * messages.length)];
-
-        if (Notification.permission === 'granted') {
-            new Notification('Your AI Pet', {
-                body: message,
-                icon: '🐾'
-            });
-        }
+        new Notification('Your AI Pet', {
+            body: message,
+            icon: '🐾'
+        });
     }
 }
 

@@ -25,6 +25,7 @@ async function loadConfig() {
 
     try {
         const response = await fetch('config.txt');
+        if (!response.ok) throw new Error('Failed to load config.txt');
         const text = await response.text();
         parseConfig(text);
     } catch (error) {
@@ -57,10 +58,12 @@ function parseConfig(text) {
 
         const [key, value] = line.split('=');
         if (key && value !== undefined) {
+            const num = parseInt(value, 10);
+            if (isNaN(num)) continue;
             if (currentSection === 'sliders') {
-                config.sliders[key.trim()] = parseInt(value);
+                config.sliders[key.trim()] = num;
             } else if (currentSection === 'weights') {
-                config.weights[key.trim()] = parseInt(value);
+                config.weights[key.trim()] = num;
             }
         }
     }
@@ -82,7 +85,7 @@ function renderSliders() {
         const group = document.createElement('div');
         group.className = 'slider-group';
         group.innerHTML = `
-            <h2>${capitalize(name)}</h2>
+            <h2>${escapeHtml(capitalize(name))}</h2>
             <div class="slider-row">
                 <label>-100</label>
                 <input
@@ -159,6 +162,13 @@ function updateWeightTotal() {
 // Convert text to Title Case
 function capitalize(text) {
     return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Save config to localStorage
