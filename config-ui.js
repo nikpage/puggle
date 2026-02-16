@@ -3,16 +3,23 @@ let config = {
     weights: {}
 };
 
+const DEFAULT_CONFIG = {
+    sliders: { emotion: 50, affection: 75, energy: 40 },
+    weights: { emotion: 33, affection: 33, energy: 34 }
+};
+
 // Load config from localStorage first, then fall back to file
 async function loadConfig() {
     const saved = localStorage.getItem('pet_config');
     if (saved) {
         try {
             config = JSON.parse(saved);
-            renderSliders();
-            return;
+            if (config.sliders && config.weights) {
+                renderSliders();
+                return;
+            }
         } catch (e) {
-            // fall through to file
+            // fall through
         }
     }
 
@@ -20,22 +27,20 @@ async function loadConfig() {
         const response = await fetch('config.txt');
         const text = await response.text();
         parseConfig(text);
-        renderSliders();
     } catch (error) {
-        console.error('Error loading config:', error);
-        // Set defaults
-        config = {
-            sliders: { emotion: 50, affection: 75, energy: 40 },
-            weights: { emotion: 33, affection: 33, energy: 34 }
-        };
-        renderSliders();
+        config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     }
+
+    renderSliders();
 }
 
 // Parse config.txt
 function parseConfig(text) {
     const lines = text.split('\n');
     let currentSection = '';
+
+    config.sliders = {};
+    config.weights = {};
 
     for (let line of lines) {
         line = line.trim();
@@ -59,15 +64,20 @@ function parseConfig(text) {
             }
         }
     }
+
+    if (Object.keys(config.sliders).length === 0) {
+        config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    }
 }
 
 // Render all sliders
 function renderSliders() {
     const container = document.getElementById('sliderContainer');
+    if (!container) return;
     container.innerHTML = '';
 
-    for (const [name, value] of Object.entries(config.sliders)) {
-        const weight = config.weights[name] || 0;
+    for (const [name, value] of Object.entries(config.sliders || {})) {
+        const weight = (config.weights && config.weights[name]) || 0;
 
         const group = document.createElement('div');
         group.className = 'slider-group';
@@ -135,6 +145,7 @@ function renderSliders() {
 function updateWeightTotal() {
     const total = Object.values(config.weights).reduce((sum, w) => sum + w, 0);
     const div = document.getElementById('weightTotal');
+    if (!div) return;
 
     if (total === 100) {
         div.className = 'weight-total ok';
@@ -166,6 +177,7 @@ function saveConfig() {
 // Save API key
 function saveApiKey() {
     const input = document.getElementById('apiKeyInput');
+    if (!input) return;
     const key = input.value.trim();
     if (key) {
         localStorage.setItem('gemini_api_key', key);
@@ -179,22 +191,28 @@ function saveApiKey() {
 // Show status message
 function showStatus(message, isSuccess) {
     const status = document.getElementById('status');
+    if (!status) return;
     status.textContent = message;
     status.className = isSuccess ? 'status success' : 'status error';
 }
 
-// Event listeners
-document.getElementById('saveBtn').addEventListener('click', saveConfig);
-document.getElementById('saveApiKeyBtn').addEventListener('click', saveApiKey);
-document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = 'index.html';
-});
+// Wait for DOM before attaching listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const saveBtn = document.getElementById('saveBtn');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const backBtn = document.getElementById('backBtn');
+    const apiKeyInput = document.getElementById('apiKeyInput');
 
-// Load existing API key into field
-window.addEventListener('load', () => {
-    const existingKey = localStorage.getItem('gemini_api_key') || '';
-    document.getElementById('apiKeyInput').value = existingKey;
-});
+    if (saveBtn) saveBtn.addEventListener('click', saveConfig);
+    if (saveApiKeyBtn) saveApiKeyBtn.addEventListener('click', saveApiKey);
+    if (backBtn) backBtn.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
 
-// Initialize
-loadConfig();
+    // Load existing API key into field
+    if (apiKeyInput) {
+        apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+    }
+
+    loadConfig();
+});
