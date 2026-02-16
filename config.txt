@@ -1,0 +1,9 @@
+[sliders]
+emotion=50
+affection=75
+energy=40
+
+[weights]
+emotion=33
+affection=33
+energy=34
