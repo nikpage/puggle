@@ -44,49 +44,75 @@ Different pet types could have different baseline ranges, drift rates, and which
 
 ## Memory System
 
-### Problem
+### Design Principle
 
-Storing every back-and-forth is impractical and wasteful. Most interactions are forgettable. But some moments matter — and a pet that remembers nothing feels hollow.
+The pet talks, so it's not a pure animal analogy — but the *mind* underneath should still be more associative than narrative. A dog doesn't remember stories. It remembers patterns, feelings, and what works. The speech is the interface; the memory engine is closer to Pavlov than a diary.
 
-### Interaction Weighting (1-100)
+That said, the goal is for the user to **feel a relationship**. Some narrative recall will help there — the pet doesn't need to remember everything, but surfacing the right moment at the right time makes the bond feel real.
 
-Each interaction gets scored on significance (1-100). The score determines how long it persists and how much it shapes personality.
+### Memory Types
 
-**Tiers:**
+Memory is organized by **type**, not just significance score. Each type forms differently and serves a different purpose.
 
-| Score Range | Longevity | Personality Impact | Example |
+| Type | What it stores | How it forms | Feels like |
 |---|---|---|---|
-| 1-30 (low) | Short-lived individually, but repeated low-value interactions build **meta-memories** — patterns, not specifics | Indirect — the pattern contributes, not any single event | "User usually says hi in the morning", "User likes puns" |
-| 31-70 (mid) | Long recall, even after a long time | Little to none — these are episodic, not formative | "That time we talked about space and you made a joke about Pluto", "Remember when milk came out of your nose at McDonalds" |
-| 71-100 (high) | Persistent — effectively permanent | Strong and lasting — these shape who the pet becomes | Surprise events (good or bad), major emotional moments, first meeting, user sharing something deeply personal |
+| **Association** | Trigger → response pattern | Repetition (Pavlovian). Can form surprisingly fast. | "Ooh, you said the W word!" |
+| **Conditioning** | Pet behavior → user reaction | Reinforcement (operant). Pet learns what *works*. | Pet figures out that being pouty gets more attention. Learns to train *you*. |
+| **Emotional imprint** | Vague feeling tied to a topic, word, or event | Single strong stimulus or repeated moderate ones | "I don't like when you talk about that." No story, just the residue. |
+| **Narrative** | A specific shared moment | Rare. High-significance interactions only. | "Remember when we..." — used sparingly for relationship texture. |
 
-**Key ideas:**
-- Low-value repetition is additive. 50 small interactions about food → meta-memory "user talks about food a lot" without storing each one.
-- Mid-value memories are the color and texture of the relationship. They don't change the pet, but they make it feel like a shared history.
-- High-value memories are rare and formative. They should be hard to trigger and hard to forget.
+**Key insight:** Associations and conditioning are the workhorse. They're cheap, fast, and feel authentic. Narrative memories are expensive and should be rare — but they're what make the user feel known.
+
+### Interaction Scoring (1-100)
+
+Each interaction gets a significance score. The score determines which memory type(s) it feeds and how long it persists.
+
+| Score | Longevity | What it feeds | Example |
+|---|---|---|---|
+| 1-30 | Short-lived alone, but repetition builds **meta-memories** (patterns, not specifics) | Associations, conditioning | "User usually says hi in the morning", "Being excited gets more play time" |
+| 31-70 | Long recall, even after a long time | Emotional imprints, occasional narrative | A funny moment, a mildly surprising conversation topic |
+| 71-100 | Persistent — effectively permanent | Narrative + strong emotional imprint + personality impact | First meeting, user sharing something deeply personal, surprise events |
+
+Low-value repetition is additive: 50 small food-related interactions → meta-memory "user talks about food a lot" without storing each one.
 
 ### Scoring
 
-Open question: who scores the interaction? Options:
-- Gemini scores it as part of the response (ask it to rate significance 1-100)
-- Heuristic based on interaction length, emotional keywords, novelty
-- Hybrid — heuristic first pass, Gemini confirms/adjusts for borderline cases
+Open question: who scores? Options:
+- Gemini scores as part of its response (rate significance 1-100)
+- Heuristic (interaction length, emotional keywords, novelty)
+- Hybrid — heuristic first pass, Gemini adjusts borderline cases
+
+### Proactive Recall — The Google Photos Inspiration
+
+Google Photos surfaces old memories unprompted — "3 years ago today." But the interesting part is when it surfaces *related* photos (not just date-matched), or ones that suggest it has a sense of humor or emotional awareness. It's not just a timeline; it's curated recall.
+
+The pet could do something similar: **unprompted memory surfacing.** Not just responding to the user, but occasionally volunteering a memory when context is right — or even when it's slightly *wrong* in a charming way.
+
+- Surface an old association when a new conversation echoes it
+- Misremember details slightly (pet-like, not broken)
+- Bring up something just because it's been a while — "I was just thinking about that time..."
+- Juxtapose two unrelated memories in a way that's accidentally funny or touching
+
+This isn't retrieval-augmented generation in the traditional sense — it's more like *mood-augmented recall*. The pet's current emotional state + conversation context → what bubbles up. Worth exploring how to make this feel natural rather than mechanical.
 
 ### Storage
 
-Considering **pgvector** for vector-based retrieval — store embeddings of memories so the pet can recall relevant ones based on conversational context, not just recency.
+**Database:** pgvector for vector-based retrieval. Local DB that the user can back up to cloud at will. A server/backend component is expected as the project grows.
 
-**Open questions:**
-- How much detail to store per memory? Full quotes? Summaries? Just the vector?
-  - Probably summaries + vector. Quotes for high-value memories. Vectors alone lose the texture.
-- Graph RAG was considered but feels like overkill for a pet's memory. Relationships between memories could matter eventually, but vector similarity gets you 80% of the way.
-- pgvector requires a server component — this breaks the current "runs entirely in browser" model. Need to decide if memory is the feature that justifies a backend, or if there's a client-side alternative (IndexedDB + lightweight embedding).
+**What to store per memory:**
+- Associations: trigger + response pattern, reinforcement count. Lightweight.
+- Conditioning: pet behavior + observed user reaction + success rate. Lightweight.
+- Emotional imprints: topic/keyword + valence + intensity. No narrative needed.
+- Narrative memories: summary + key quotes + vector embedding. Richer storage, but rare.
+
+Graph RAG considered but probably overkill. Vector similarity handles most retrieval needs.
 
 ---
 
 ## Open Questions
 
 - Where does the scoring threshold live? Hardcoded? Configurable? Per-species?
-- Should the pet be able to "forget" mid-value memories over time (decay), or do they persist once stored?
-- How does memory interact with personality drift? Does recalling a high-value sad memory temporarily shift emotion down?
-- Client-side vs server-side storage — what's the boundary?
+- Should memories decay? Mid-value ones could fade, making the pet feel more natural. But some "random" old memories surfacing is charming (see Google Photos note).
+- How does memory interact with personality drift? Does recalling a high-value sad memory temporarily shift emotion?
+- How does the proactive recall system decide *when* to surface a memory vs. just respond normally? Frequency matters — too often is annoying, too rare is invisible.
+- Can the pet develop "favorite memories" it returns to — the way a person retells the same stories?
